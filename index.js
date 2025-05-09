@@ -49,7 +49,7 @@ app.post("/inscription", (req, res) => {
 });
 
 app.post("/connexion", (req, res) => {
-  const utilisateur = req.body
+  const utilisateur = req.body;
 
   connection.query(
     "SELECT * FROM utilisateur WHERE email = ?",
@@ -60,26 +60,50 @@ app.post("/connexion", (req, res) => {
         return res.sendStatus(500);
       }
 
-      if(resultat.length != 1) {
+      if (resultat.length != 1) {
         return res.sendStatus(401);
       }
 
-      bcrypt.compare(utilisateur.password, resultat[0].password, (err, compatible) => {
-        if (err) {
-          console.debug(err);
-          return res.sendStatus(500);
-        }
+      bcrypt.compare(
+        utilisateur.password,
+        resultat[0].password,
+        (err, compatible) => {
+          if (err) {
+            console.debug(err);
+            return res.sendStatus(500);
+          }
 
-        if (compatible) {
-          return res.json({ message: "vous etes connecté" });
-        }
+          if (compatible) {
+            return res.send(
+              jwtUtil.sign({ email: utilisateur.email }, "azerty123")
+            );
+          }
 
-        return res.sendStatus(401);
-        
-      });
+          return res.sendStatus(401);
+        }
+      );
     }
   );
-})
+});
+
+app.get("/produits", (req, res) => {
+  const jwt = req.headers["authorization"];
+
+  if (!jwt) {
+    res.sendStatus(401);
+  }
+
+  try {
+    data = jwtUtil.verify(jwt, "azerty123");
+
+    connection.query("SELECT * FROM produit", (err, produits) => {
+      
+      res.json(produits);
+    });
+  } catch {
+    res.sendStatus(403);
+  }
+});
 
 app.listen(5000, () => {
   console.log("Server is running on port 5000");
