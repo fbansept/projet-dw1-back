@@ -98,15 +98,25 @@ app.get("/produits", (req, res) => {
     data = jwtUtil.verify(jwt, "azerty123");
 
     connection.query("SELECT * FROM produit", (err, produits) => {
-      
       res.json(produits);
     });
-
-    
   } catch {
     res.sendStatus(403);
   }
 });
+
+app.post("/produit", (req, res) => {
+
+  const produit = req.body;
+
+  connection.query(
+    "INSERT INTO produit (nom, description, prix) VALUES (?,?,?)",
+    [produit.nom, produit.description, produit.prix],
+    (err, reponse) => {
+      res.json(produit)
+    }
+  );
+})
 
 app.listen(5000, () => {
   console.log("Server is running on port 5000");
