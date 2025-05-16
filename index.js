@@ -24,6 +24,7 @@ connection.connect((err) => {
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
 app.get("/", (req, res) => {
   res.send("hello");
@@ -100,6 +101,8 @@ app.get("/produits", (req, res) => {
       
       res.json(produits);
     });
+
+    
   } catch {
     res.sendStatus(403);
   }
