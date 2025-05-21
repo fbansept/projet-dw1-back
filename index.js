@@ -1,26 +1,10 @@
 const express = require("express");
 const cors = require("cors");
-const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 const jwtUtil = require("jsonwebtoken");
 const app = express();
-
-// Configuration de la base de données
-const connection = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "root",
-  database: "project-dw1",
-});
-
-// Connexion à la base de données
-connection.connect((err) => {
-  if (err) {
-    console.error("Erreur de connexion à la base de données :", err);
-    return;
-  }
-  console.log("Connecté à la base de données MySQL");
-});
+const jwtParser = require("./jwt-parser");
+const connection = require("./connection-db");
 
 app.use(cors());
 app.use(express.json());
@@ -87,36 +71,28 @@ app.post("/connexion", (req, res) => {
   );
 });
 
-app.get("/produits", (req, res) => {
-  const jwt = req.headers["authorization"];
-
-  if (!jwt) {
-    res.sendStatus(401);
-  }
-
-  try {
-    data = jwtUtil.verify(jwt, "azerty123");
-
-    connection.query("SELECT * FROM produit", (err, produits) => {
-      res.json(produits);
-    });
-  } catch {
-    res.sendStatus(403);
-  }
+app.get("/produits", jwtParser, (req, res) => {
+  connection.query("SELECT * FROM produit", (err, produits) => {
+    res.json(produits);
+  });
 });
 
-app.post("/produit", (req, res) => {
-
+app.post("/produit", jwtParser, (req, res) => {
   const produit = req.body;
 
   connection.query(
-    "INSERT INTO produit (nom, description, prix) VALUES (?,?,?)",
-    [produit.nom, produit.description, produit.prix],
-    (err, reponse) => {
-      res.json(produit)
+    "INSERT INTO produit (nom, description, prix, utilisateur_id) VALUES (?,?,?,?)",
+    [produit.nom, produit.description, produit.prix, req.user.id],
+    (err, lignes) => {
+      if (err) {
+        console.log(err);
+        return res.sendStatus(500);
+      }
+
+      res.json(produit);
     }
   );
-})
+});
 
 app.listen(5000, () => {
   console.log("Server is running on port 5000");
