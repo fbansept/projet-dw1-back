@@ -77,19 +77,122 @@ app.get("/produits", jwtParser, (req, res) => {
   });
 });
 
+app.get("/produit/:id", jwtParser, (req, res) => {
+  const id = req.params.id;
+
+  connection.query(
+    "SELECT * FROM produit WHERE id = ?",
+    [id],
+    (err, produits) => {
+      if (err) {
+        console.debug(err);
+        return res.sendStatus(500);
+      }
+
+      if (produits.length == 0) {
+        return res.sendStatus(404);
+      }
+
+      // res.json({
+      //   nom: produits[0].produit_nom,
+      //   description: produits[0].description,
+      //   prix: produits[0].prix,
+      // });
+
+      //res.json({ ...produits[0], nom: produits[0].produit_nom });
+
+      res.json(produits[0]);
+    }
+  );
+});
+
 app.post("/produit", jwtParser, (req, res) => {
   const produit = req.body;
 
+  if (
+    produit.nom == null ||
+    produit.nom.length < 3 ||
+    produit.nom.length > 20 ||
+    (produit.description && produit.description.length > 50) ||
+    produit.prix < 0.01
+  ) {
+    return res.sendStatus(400); //bad request
+  }
+
   connection.query(
-    "INSERT INTO produit (nom, description, prix, utilisateur_id) VALUES (?,?,?,?)",
-    [produit.nom, produit.description, produit.prix, req.user.id],
+    "SELECT * FROM produit WHERE nom = ?",
+    [produit.nom],
     (err, lignes) => {
       if (err) {
         console.log(err);
         return res.sendStatus(500);
       }
 
-      res.json(produit);
+      //un produit porte déjà le nom saisi
+      if (lignes.length >= 1) {
+        return res.sendStatus(409); //conflict
+      }
+
+      connection.query(
+        "INSERT INTO produit (nom, description, prix, utilisateur_id) VALUES (?,?,?,?)",
+        [produit.nom, produit.description, produit.prix, req.user.id],
+        (err, lignes) => {
+          if (err) {
+            console.log(err);
+            return res.sendStatus(500);
+          }
+
+          res.json(produit);
+        }
+      );
+    }
+  );
+});
+
+app.put("/produit/:id", jwtParser, (req, res) => {
+  const id = req.params.id;
+  const produit = req.body;
+  produit.id = id;
+
+  //validation des données
+  if (
+    produit.nom == null ||
+    produit.nom.length < 3 ||
+    produit.nom.length > 20 ||
+    (produit.description && produit.description.length > 50) ||
+    produit.prix < 0.01
+  ) {
+    return res.sendStatus(400); //bad request
+  }
+
+  connection.query(
+    "SELECT * FROM produit WHERE nom = ? AND id != ?",
+    [produit.nom, id],
+    (err, lignes) => {
+      if (err) {
+        console.log(err);
+        return res.sendStatus(500);
+      }
+
+      //un produit porte déjà le nom saisi
+      if (lignes.length >= 1) {
+        return res.sendStatus(409); //conflict
+      }
+
+      connection.query(
+        "UPDATE produit SET nom = ?, description = ?, prix = ? WHERE id = ?",
+        [produit.nom, produit.description, produit.prix, id],
+        (err, lignes) => {
+          console.log(lignes);
+
+          if (err) {
+            console.log(err);
+            return res.sendStatus(500);
+          }
+
+          res.json(produit);
+        }
+      );
     }
   );
 });
